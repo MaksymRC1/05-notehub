@@ -1,7 +1,9 @@
 import { Formik, Form, Field, ErrorMessage, type FormikHelpers } from 'formik';
 import * as Yup from 'yup';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import css from './NoteForm.module.css';
 import type { NoteTag } from '../../types/note';
+import { createNote } from '../../services/noteService';
 
 interface NoteFormValues {
   title: string;
@@ -10,8 +12,8 @@ interface NoteFormValues {
 }
 
 interface NoteFormProps {
-  onSubmit: (values: NoteFormValues, helpers: FormikHelpers<NoteFormValues>) => void;
   onCancel: () => void;
+  onSuccess?: () => void;
 }
 
 const NoteSchema = Yup.object().shape({
@@ -32,12 +34,38 @@ const initialValues: NoteFormValues = {
   tag: 'Todo',
 };
 
-const NoteForm = ({ onSubmit, onCancel }: NoteFormProps) => {
+const NoteForm = ({ onCancel, onSuccess }: NoteFormProps) => {
+  const queryClient = useQueryClient();
+
+  const createMutation = useMutation({
+    mutationFn: createNote,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      if (onSuccess) {
+        onSuccess();
+      }
+    },
+  });
+
+  const handleSubmit = (
+    values: NoteFormValues,
+    { setSubmitting, resetForm }: FormikHelpers<NoteFormValues>
+  ) => {
+    createMutation.mutate(values, {
+      onSettled: () => {
+        setSubmitting(false);
+      },
+      onSuccess: () => {
+        resetForm();
+      },
+    });
+  };
+
   return (
     <Formik
       initialValues={initialValues}
       validationSchema={NoteSchema}
-      onSubmit={onSubmit}
+      onSubmit={handleSubmit}
     >
       {({ isSubmitting }) => (
         <Form className={css.form}>
@@ -78,7 +106,7 @@ const NoteForm = ({ onSubmit, onCancel }: NoteFormProps) => {
             <button
               type="submit"
               className={css.submitButton}
-              disabled={isSubmitting}
+              disabled={isSubmitting || createMutation.isPending}
             >
               Create note
             </button>

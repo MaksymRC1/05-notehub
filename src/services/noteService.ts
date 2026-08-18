@@ -8,11 +8,8 @@ export interface FetchNotesParams {
 }
 
 export interface FetchNotesResponse {
-  data: Note[];
-  totalItems: number;
+  notes: Note[];
   totalPages: number;
-  page: number;
-  perPage: number;
 }
 
 const instance = axios.create({
