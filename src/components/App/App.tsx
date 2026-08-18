@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useDebouncedCallback } from 'use-debounce';
 import css from './App.module.css';
-import { fetchNotes, createNote, deleteNote } from '../../services/noteService';
+import { fetchNotes, createNote } from '../../services/noteService';
 import SearchBox from '../SearchBox/SearchBox';
 import Pagination from '../Pagination/Pagination';
 import NoteList from '../NoteList/NoteList';
@@ -29,6 +29,7 @@ const App = () => {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['notes', page, debouncedSearch],
     queryFn: () => fetchNotes({ page, perPage: 12, search: debouncedSearch }),
+    placeholderData: keepPreviousData,
   });
 
   const createMutation = useMutation({
@@ -36,13 +37,6 @@ const App = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notes'] });
       setIsModalOpen(false);
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteNote,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes'] });
     },
   });
 
@@ -70,11 +64,7 @@ const App = () => {
       {isError && <p>Error loading notes: {error.message}</p>}
 
       {data && data.data.length > 0 && (
-        <NoteList
-          notes={data.data}
-          onDelete={(id) => deleteMutation.mutate(id)}
-          isDeletingId={deleteMutation.isPending ? deleteMutation.variables : null}
-        />
+        <NoteList notes={data.data} />
       )}
 
       {data && data.data.length === 0 && !isLoading && (
